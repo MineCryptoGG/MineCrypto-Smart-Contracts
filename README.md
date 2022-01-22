@@ -4,7 +4,9 @@ In this repo you can find all the smart contracts used on MineCrypto.
 
 ## Contracts
 
-**MineNft.sol**: the NFT rank contract which is the core of the system
+**MineToken.sol**: the $MCR token that which is the utility token of the ecosystem
+
+**MineNft.sol**: the NFT rank contract which is the core of the NFT minting and breeding system
 
 **MineNftPresale.sol**: allows us to whitelist users for the presale
 
