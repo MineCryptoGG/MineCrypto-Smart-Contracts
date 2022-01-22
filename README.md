@@ -10,7 +10,9 @@ In this repo you can find all the smart contracts used on MineCrypto.
 
 **MineNftPresale.sol**: allows us to whitelist users for the presale
 
-**MineRandom.sol**: generates random numbers safely using ChainLink's Verifiable Random Function. This randoms are used for the NFT Rank's purity
+**MineNftPresale.sol**: allows us to whitelist users for the presale
+
+**StepVesting.sol**: it enables tockend locking with stepped vesting and cliffs
 
 **IMineMintRandom.sol**: interface to allow communication from `MineNft.sol` and `MineRandom.sol`. This allows us to migrate the random number generation to newer versions of VRF without changing the NFT Rank contract. 
 
@@ -20,4 +22,4 @@ We are in the process of getting audits from big firms, for now the contracts we
 
 ## Considerations
 
-These contracts are prepared to allow for the Minter, Oracle and Forge entities. More on them in the future. 
+These contracts are prepared to allow for the Minter, Oracle and Forge entities that enable P2E. More on them in the future. 
