@@ -1,16 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "./IMineMintRandom.sol";
+import "./IMineForgeRandom.sol";
+import "./IMineForge.sol";
 import "./MineNft.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract MineRandom is VRFConsumerBase, Ownable, IMineMintRandom {
-
-
+contract MineRandomv2 is VRFConsumerBase, Ownable, IMineMintRandom, IMineForgeRandom {
     // requestId to tokenId for mint requests
     mapping(bytes32 => uint256) public tokenMintRequest;
+    // tokenId for the new token, to tokenId of the parent NFT and maxPurityIncrease
+    mapping(uint256 => ForgedRankInfo) public forgedRank;
+
+    struct ForgedRankInfo {
+        uint256 parentId;
+        uint16 maxPurityIncrease;
+    }
 
     // vrf
     bytes32 internal keyHash;
@@ -18,12 +25,12 @@ contract MineRandom is VRFConsumerBase, Ownable, IMineMintRandom {
 
     // contracts
     MineNft mineNft;
+    IMineForge mineForge;
 
     /**
      * Constructor inherits VRFConsumerBase
      *
      */
-
     constructor()
         VRFConsumerBase(
             0x747973a5A2a4Ae1D3a8fDF5479f1514F65Db9C31, // VRF Coordinator
@@ -44,11 +51,29 @@ contract MineRandom is VRFConsumerBase, Ownable, IMineMintRandom {
         tokenMintRequest[requestId] = tokenId;
     }
 
+    function setIsForge(uint256 newRankId, uint256 parentRankId, uint16 maxPurityIncrease) external override {
+        require(msg.sender == address(mineForge), "Only forge call allowed");
+
+        forgedRank[newRankId].maxPurityIncrease = maxPurityIncrease;
+        forgedRank[newRankId].parentId = parentRankId;
+    }
+
     /**
      * Callback function used by VRF Coordinator
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
-        mineNft.setPurity(tokenMintRequest[requestId], randomness);
+        uint256 newTokenId = tokenMintRequest[requestId];
+
+        uint256 parentRank = forgedRank[newTokenId].parentId;
+        uint16 maxPurityIncrease = forgedRank[newTokenId].maxPurityIncrease;
+
+        bool isForge = parentRank != 0;
+
+        if (isForge) {
+            mineForge.setNewPurity(newTokenId, parentRank, randomness, maxPurityIncrease);
+        } else {
+            mineNft.setPurity(newTokenId, randomness);
+        }
     }
 
     /**
@@ -62,4 +87,28 @@ contract MineRandom is VRFConsumerBase, Ownable, IMineMintRandom {
         mineNft = MineNft(newAddress);
     }
 
+    function setForgeAddress(address newAddress) external onlyOwner {
+        mineForge = IMineForge(newAddress);
+    }
+
+    /**
+     * @dev allows withdrawing any token that is stuck in the contract
+     * @param tokenAddress addres of the token we are withdrawing
+     */
+    function emergencyWithdrawToken(address tokenAddress) external onlyOwner {
+        IERC20 tokenContract = IERC20(tokenAddress);
+
+        uint256 withdrawBalance = tokenContract.balanceOf(address(this));
+
+        require(withdrawBalance > 0, "No balance for this token");
+
+        tokenContract.transfer(msg.sender, withdrawBalance);
+    }
+
+    /**
+     * @dev allows withdrawing BNB that is stuck in the contract
+     */
+    function emergencyWithdrawBNB() external onlyOwner {
+        payable(msg.sender).transfer(address(this).balance);
+    }
 }
